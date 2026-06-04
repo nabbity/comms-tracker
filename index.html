@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fomo Energy — Commissions Tracker</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:#f5f5f5;color:#1a1a1a;font-size:14px}
+header{background:#fff;border-bottom:3px solid #F5821F;padding:14px 24px;display:flex;justify-content:space-between;align-items:center}
+header h1{font-size:17px;font-weight:700}
+.accent{color:#F5821F}
+nav{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 24px;display:flex}
+nav button{background:none;border:none;padding:11px 20px;font-size:14px;cursor:pointer;color:#666;border-bottom:3px solid transparent;margin-bottom:-1px;font-family:Arial}
+nav button.active{color:#F5821F;border-bottom-color:#F5821F;font-weight:700}
+nav button:hover:not(.active){color:#1a1a1a}
+main{max-width:1350px;margin:0 auto;padding:24px}
+.tab-content{display:none}.tab-content.active{display:block}
+
+/* Window bar */
+.window-bar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:14px 18px;margin-bottom:20px}
+.win-select{border:1px solid #d1d5db;border-radius:6px;padding:7px 12px;font-size:14px;font-weight:600;font-family:Arial;cursor:pointer;background:#fff;color:#1a1a1a;min-width:200px}
+.pay-badge{background:#FFF3E8;color:#D4690A;border-radius:4px;padding:5px 12px;font-size:12px;font-weight:700}
+.btn{padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:Arial}
+.btn-primary{background:#F5821F;color:#fff}.btn-primary:hover{background:#D4690A}
+.btn-secondary{background:#f3f4f6;color:#374151}.btn-secondary:hover{background:#e5e7eb}
+.btn-danger{background:#FEE2E2;color:#991B1B}.btn-danger:hover{background:#FECACA}
+.btn-sm{padding:4px 10px;font-size:12px}
+
+/* Summary cards */
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;margin-bottom:20px}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:14px 16px}
+.card .name{font-size:11px;color:#888;font-weight:700;letter-spacing:.3px;margin-bottom:4px}
+.card .amount{font-size:20px;font-weight:700;color:#F5821F}
+.card .sub{font-size:11px;color:#aaa;margin-top:3px}
+.card.grand{border-color:#F5821F;background:#FFF8F3}.card.grand .amount{color:#C4590A;font-size:22px}
+.card.person{cursor:pointer;transition:box-shadow .15s,border-color .15s}
+.card.person:hover{border-color:#F5821F;box-shadow:0 2px 8px rgba(245,130,31,.15)}
+.card.person.selected{border-color:#F5821F;background:#FFF8F3;box-shadow:0 0 0 2px rgba(245,130,31,.25)}
+
+/* Tables */
+.tbl-wrap{background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+th{background:#f8f8f8;padding:9px 12px;text-align:left;font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #e5e7eb}
+td{padding:9px 12px;border-bottom:1px solid #f3f4f6;font-size:13px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafafa}
+.dim{color:#bbb}
+.sub2{font-size:11px;color:#9CA3AF;margin-top:2px}
+
+/* Badges */
+.badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700}
+.ok{background:#D1FAE5;color:#065F46}.notok{background:#FEE2E2;color:#991B1B}
+.bdp{background:#DBEAFE;color:#1E40AF}.bbal{background:#EDE9FE;color:#5B21B6}
+.bwarn{background:#FEF3C7;color:#92400E}
+
+/* Section header */
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.sec-title{font-size:15px;font-weight:700}
+.export-btn{background:#fff;border:1px solid #d1d5db;color:#374151;padding:6px 12px;border-radius:5px;font-size:12px;cursor:pointer;font-family:Arial}
+.export-btn:hover{background:#f9f9f9}
+
+/* Filter bar */
+.filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+.filter-bar select{border:1px solid #d1d5db;border-radius:5px;padding:6px 9px;font-size:13px;font-family:Arial}
+
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:10px;width:520px;max-height:92vh;overflow-y:auto;padding:26px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal h2{font-size:15px;font-weight:700;margin-bottom:18px}
+.fr{margin-bottom:14px}
+.fr label{display:block;font-size:11px;font-weight:700;color:#666;margin-bottom:3px;letter-spacing:.3px}
+.fr input,.fr select,.fr textarea{width:100%;border:1px solid #d1d5db;border-radius:5px;padding:7px 9px;font-size:13px;font-family:Arial}
+.fr input:focus,.fr select:focus,.fr textarea:focus{outline:none;border-color:#F5821F;box-shadow:0 0 0 2px rgba(245,130,31,.15)}
+.fr .hint{font-size:11px;color:#aaa;margin-top:2px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.apv-box{background:#f8f8f8;border-radius:7px;padding:12px;margin-bottom:14px}
+.apv-box .apv-label{font-size:11px;font-weight:700;color:#666;letter-spacing:.3px;margin-bottom:8px}
+.chk-row{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.chk-row input[type=checkbox]{width:auto;cursor:pointer}
+.chk-row label{font-size:13px;font-weight:600;cursor:pointer}
+.comm-preview{background:#FFF8F3;border-radius:5px;padding:10px 12px;font-size:12px;margin-bottom:14px}
+.form-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;align-items:center}
+.empty{text-align:center;padding:48px;color:#9CA3AF}
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="accent">Fomo Energy</span> — Commissions Tracker</h1>
+  <span style="font-size:11px;color:#bbb">POC v1 · data stored locally</span>
+</header>
+
+<nav>
+  <button class="active" data-tab="this-month" onclick="switchTab(this)">This Month</button>
+  <button data-tab="all-projects" onclick="switchTab(this)">All Projects</button>
+  <button data-tab="pending" onclick="switchTab(this)">Pending</button>
+</nav>
+
+<main>
+
+<!-- THIS MONTH -->
+<div id="tab-this-month" class="tab-content active">
+  <div class="window-bar">
+    <select class="win-select" id="win-select" onchange="selectWindow(this.value)"></select>
+    <div id="pay-badge"></div>
+    <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="resetWindow()">Current window</button>
+  </div>
+  <div id="summary-grid" class="summary-grid"></div>
+  <div class="sec-hdr">
+    <div class="sec-title">Projects in this window</div>
+    <button class="export-btn" onclick="exportCSV('window')">Export CSV</button>
+  </div>
+  <div class="tbl-wrap" id="window-table"></div>
+</div>
+
+<!-- ALL PROJECTS -->
+<div id="tab-all-projects" class="tab-content">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+    <div class="filter-bar" style="margin:0">
+      <select id="fp-person" onchange="renderAll()">
+        <option value="">All salespeople</option>
+        <option>Pandora Chew</option><option>Dionne Sim</option><option>Lew Jen Sern</option>
+        <option>Hans Lee</option><option>Zeng Guowei</option><option>Ler Yee Yoong</option>
+      </select>
+      <select id="fp-status" onchange="renderAll()">
+        <option value="">All statuses</option>
+        <option value="ready">All criteria met</option>
+        <option value="pending">Payment made — criteria incomplete</option>
+        <option value="nopay">No payment yet</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="export-btn" onclick="exportCSV('all')">Export CSV</button>
+      <button class="btn btn-primary btn-sm" onclick="openModal(null)">+ Add project</button>
+    </div>
+  </div>
+  <div class="tbl-wrap" id="all-table"></div>
+</div>
+
+<!-- PENDING -->
+<div id="tab-pending" class="tab-content">
+  <p style="color:#666;font-size:13px;margin-bottom:14px">Payment has been made but not all three criteria are met. Commission is held until the outstanding items are resolved.</p>
+  <div class="tbl-wrap" id="pending-table"></div>
+</div>
+
+</main>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="bgClose(event)">
+<div class="modal">
+  <h2 id="modal-title">Add project</h2>
+  <form id="pform" onsubmit="saveProject(event)">
+    <input type="hidden" id="f-id">
+    <div class="fr"><label>PROJECT NAME *</label><input type="text" id="f-project" required placeholder="e.g. 47 Watten Drive"></div>
+    <div class="g2">
+      <div class="fr"><label>SALES PERSON *</label>
+        <select id="f-person" required>
+          <option value="">Select…</option>
+          <option>Pandora Chew</option><option>Dionne Sim</option><option>Lew Jen Sern</option>
+          <option>Hans Lee</option><option>Zeng Guowei</option><option>Ler Yee Yoong</option>
+        </select>
+      </div>
+      <div class="fr"><label>DEV MARGIN (S$) *</label><input type="number" id="f-margin" step="0.01" min="0" required placeholder="0.00" oninput="previewComm()"></div>
+    </div>
+    <div class="g2">
+      <div class="fr">
+        <label>DP SPLIT %</label>
+        <input type="number" id="f-dp-pct" min="0" max="100" step="1" value="40" oninput="previewComm()">
+        <div class="hint">% of total commission paid on downpayment</div>
+      </div>
+      <div class="fr" style="padding-top:18px">
+        <div style="font-size:12px;color:#aaa;margin-top:6px">Balance split = <b id="bal-preview">60</b>%</div>
+      </div>
+    </div>
+    <div class="g2">
+      <div class="fr"><label>DP PAYMENT DATE</label><input type="date" id="f-dp-date"></div>
+      <div class="fr"><label>BALANCE PAYMENT DATE</label><input type="date" id="f-bal-date"></div>
+    </div>
+    <div class="apv-box">
+      <div class="apv-label">APPROVALS</div>
+      <div class="g2">
+        <div>
+          <div class="chk-row"><input type="checkbox" id="f-fm-ok" onchange="toggleApv('fm')"><label for="f-fm-ok">FM approved</label></div>
+          <input type="date" id="f-fm-date" disabled style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:6px 9px;font-size:13px">
+        </div>
+        <div>
+          <div class="chk-row"><input type="checkbox" id="f-2p-ok" onchange="toggleApv('2p')"><label for="f-2p-ok">2-pager approved</label></div>
+          <input type="date" id="f-2p-date" disabled style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:6px 9px;font-size:13px">
+        </div>
+      </div>
+    </div>
+    <div class="fr"><label>NOTES</label><textarea id="f-notes" rows="2" style="resize:vertical"></textarea></div>
+    <div class="comm-preview" id="comm-preview"></div>
+    <div class="form-actions">
+      <button type="button" class="btn btn-danger btn-sm" id="del-btn" onclick="deleteProject()" style="display:none;margin-right:auto">Delete</button>
+      <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+  </form>
+</div>
+</div>
+
+<script>
+// ── Constants ──────────────────────────────────────────────────────────────────
+const SALESPEOPLE = ['Pandora Chew','Dionne Sim','Lew Jen Sern','Hans Lee','Zeng Guowei','Ler Yee Yoong'];
+const COMM_RATE = 0.6;
+let selectedPerson = null;
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// ── Storage ────────────────────────────────────────────────────────────────────
+function load(){try{return JSON.parse(localStorage.getItem('fomo_comms_v1')||'null')||[];}catch{return[];}}
+function persist(){localStorage.setItem('fomo_comms_v1',JSON.stringify(projects));}
+let projects = load();
+if(!projects.length){projects=seedData();persist();}
+
+// ── Commission logic ───────────────────────────────────────────────────────────
+function dpComm(p){return p.dev_margin*(p.dp_pct/100)*COMM_RATE;}
+function balComm(p){return p.dev_margin*(1-p.dp_pct/100)*COMM_RATE;}
+
+function maxDate(...ds){
+  const v=ds.filter(Boolean);
+  return v.length?v.reduce((a,b)=>a>b?a:b):null;
+}
+
+// Trigger date = date when ALL criteria for that payment type are met
+function dpTrigger(p){
+  if(!p.dp_date||!p.fm_ok||!p.twopager_ok||!p.fm_date||!p.twopager_date)return null;
+  return maxDate(p.dp_date,p.fm_date,p.twopager_date);
+}
+function balTrigger(p){
+  if(!p.bal_date||!p.fm_ok||!p.twopager_ok||!p.fm_date||!p.twopager_date)return null;
+  return maxDate(p.bal_date,p.fm_date,p.twopager_date);
+}
+
+function inWindow(d,from,to){return d&&d>=from&&d<=to;}
+
+// ── Window helpers ─────────────────────────────────────────────────────────────
+// Window = 18th of month N → 17th of month N+1 (no overlap between windows)
+// activeWindowMonth = the month/year of the 17th closing date (e.g. June = window closes 17 Jun)
+let activeWindowMonth; // {year, month} where month is 0-indexed, represents the TO month
+
+function currentWindowMonth(){
+  const t=new Date();
+  const day=t.getDate();
+  // If today is on or before the 17th, we're still in the window that closes this month
+  // If today is after the 17th, the current window closes next month
+  let y=t.getFullYear(), m=t.getMonth();
+  if(day>17){m++;if(m>11){m=0;y++;}}
+  return{year:y,month:m};
+}
+
+function windowDates(wm){
+  // TO = 17th of wm.month
+  const toy=wm.year, tom=wm.month;
+  // FROM = 18th of previous month
+  let fromy=toy, fromm=tom-1;
+  if(fromm<0){fromm=11;fromy--;}
+  return{
+    from:`${fromy}-${String(fromm+1).padStart(2,'0')}-18`,
+    to:`${toy}-${String(tom+1).padStart(2,'0')}-17`
+  };
+}
+
+function payDate(to){return to.slice(0,-2)+'20';}
+
+function windowKey(wm){return`${wm.year}-${String(wm.month+1).padStart(2,'0')}`;}
+
+function buildWindowOptions(){
+  // Show 12 months back and 3 months forward from today
+  const sel=document.getElementById('win-select');
+  const cur=currentWindowMonth();
+  const opts=[];
+  for(let i=-12;i<=3;i++){
+    let y=cur.year, m=cur.month+i;
+    while(m>11){m-=12;y++;}
+    while(m<0){m+=12;y--;}
+    opts.push({year:y,month:m});
+  }
+  const current=windowKey(cur);
+  sel.innerHTML=opts.map(wm=>{
+    const {from,to}=windowDates(wm);
+    const [fy,fm,fd]=from.split('-'),[ty,tm,td]=to.split('-');
+    const label=`${fd} ${MONTHS[+fm-1]} – ${td} ${MONTHS[+tm-1]} ${ty}`;
+    const key=windowKey(wm);
+    const isNow=key===current?' (current)':'';
+    return`<option value="${key}"${key===windowKey(activeWindowMonth)?' selected':''}>${label}${isNow}</option>`;
+  }).join('');
+}
+
+function selectWindow(key){
+  const [y,m]=key.split('-').map(Number);
+  activeWindowMonth={year:y,month:m-1};
+  renderThisMonth();
+}
+
+// ── Formatting ─────────────────────────────────────────────────────────────────
+function fmt(n){return'S$'+n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
+function fmtD(d){
+  if(!d)return'<span class="dim">—</span>';
+  const[y,m,day]=d.split('-');
+  return`${day} ${MONTHS[+m-1]} ${y}`;
+}
+
+// ── Render: This Month ─────────────────────────────────────────────────────────
+function renderThisMonth(){
+  const {from,to}=windowDates(activeWindowMonth);
+  buildWindowOptions();
+
+  const pay=payDate(to);
+  document.getElementById('pay-badge').innerHTML=`<div class="pay-badge">Pay date: ${fmtD(pay)}</div>`;
+
+  const rows=[];
+  for(const p of projects){
+    const dt=dpTrigger(p),bt=balTrigger(p);
+    if(dt&&inWindow(dt,from,to))rows.push({p,type:'DP',trigger:dt,amount:dpComm(p)});
+    if(bt&&inWindow(bt,from,to))rows.push({p,type:'Balance',trigger:bt,amount:balComm(p)});
+  }
+
+  // Cards
+  const totals={};
+  for(const sp of SALESPEOPLE)totals[sp]=0;
+  let grand=0;
+  for(const r of rows){totals[r.p.salesperson]=(totals[r.p.salesperson]||0)+r.amount;grand+=r.amount;}
+
+  let cards=`<div class="card grand"><div class="name">TOTAL PAYOUT</div><div class="amount">${fmt(grand)}</div><div class="sub">${rows.length} commission(s)</div></div>`;
+  for(const sp of SALESPEOPLE){
+    const a=totals[sp]||0;
+    const c=rows.filter(r=>r.p.salesperson===sp).length;
+    const sel=selectedPerson===sp?'selected':'';
+    cards+=`<div class="card person ${sel}" onclick="togglePersonFilter('${sp}')"><div class="name">${sp}</div><div class="amount">${a>0?fmt(a):'<span style="color:#ccc;font-size:16px">—</span>'}</div><div class="sub">${c>0?c+' item(s)':'nothing this window'}</div></div>`;
+  }
+  document.getElementById('summary-grid').innerHTML=cards;
+
+  // Apply person filter to rows
+  const visibleRows = selectedPerson ? rows.filter(r=>r.p.salesperson===selectedPerson) : rows;
+
+  // Table
+  if(!visibleRows.length){document.getElementById('window-table').innerHTML=`<div class="empty">${selectedPerson?'No commissions for '+selectedPerson+' in this window.':'No commissions fall in this window.'}</div>`;return;}
+
+  visibleRows.sort((a,b)=>a.p.salesperson.localeCompare(b.p.salesperson)||a.trigger.localeCompare(b.trigger));
+
+  let html=`<table><thead><tr>
+    <th>Project</th><th>Sales person</th><th>Type</th><th>Trigger date</th><th>Dev margin</th><th style="text-align:right">Commission</th><th></th>
+  </tr></thead><tbody>`;
+  for(const r of visibleRows){
+    const payLine=r.type==='DP'?`DP: ${fmtD(r.p.dp_date)}`:`Bal: ${fmtD(r.p.bal_date)}`;
+    html+=`<tr>
+      <td>${r.p.project}</td>
+      <td>${r.p.salesperson}</td>
+      <td><span class="badge ${r.type==='DP'?'bdp':'bbal'}">${r.type}</span></td>
+      <td>${fmtD(r.trigger)}<div class="sub2">${payLine} · FM: ${fmtD(r.p.fm_date)} · 2P: ${fmtD(r.p.twopager_date)}</div></td>
+      <td>${fmt(r.p.dev_margin)}</td>
+      <td style="text-align:right;font-weight:700">${fmt(r.amount)}</td>
+      <td><button class="btn btn-secondary btn-sm" onclick="openModal('${r.p.id}')">Edit</button></td>
+    </tr>`;
+  }
+  html+='</tbody></table>';
+  document.getElementById('window-table').innerHTML=html;
+}
+
+// ── Render: All Projects ───────────────────────────────────────────────────────
+function renderAll(){
+  const fp=document.getElementById('fp-person').value;
+  const fs=document.getElementById('fp-status').value;
+
+  let list=[...projects];
+  if(fp)list=list.filter(p=>p.salesperson===fp);
+  if(fs==='ready')list=list.filter(p=>p.fm_ok&&p.twopager_ok&&(p.dp_date||p.bal_date));
+  if(fs==='pending')list=list.filter(p=>(p.dp_date||p.bal_date)&&(!p.fm_ok||!p.twopager_ok));
+  if(fs==='nopay')list=list.filter(p=>!p.dp_date&&!p.bal_date);
+
+  if(!list.length){document.getElementById('all-table').innerHTML='<div class="empty">No projects match this filter.</div>';return;}
+
+  let html=`<table><thead><tr>
+    <th>Project</th><th>Sales person</th><th>DP%</th><th>DP date / trigger</th><th>Bal date / trigger</th><th>FM</th><th>2-pager</th><th>DP comm</th><th>Bal comm</th><th></th>
+  </tr></thead><tbody>`;
+  for(const p of list){
+    const dt=dpTrigger(p),bt=balTrigger(p);
+    html+=`<tr>
+      <td>${p.project}${p.notes?`<div class="sub2">${p.notes}</div>`:''}</td>
+      <td>${p.salesperson}</td>
+      <td>${p.dp_pct}%</td>
+      <td>${fmtD(p.dp_date)}${dt?`<div class="sub2">Trigger: ${fmtD(dt)}</div>`:''}</td>
+      <td>${fmtD(p.bal_date)}${bt?`<div class="sub2">Trigger: ${fmtD(bt)}</div>`:''}</td>
+      <td><span class="badge ${p.fm_ok?'ok':'notok'}">${p.fm_ok?'OK':'—'}</span>${p.fm_date?`<div class="sub2">${fmtD(p.fm_date)}</div>`:''}</td>
+      <td><span class="badge ${p.twopager_ok?'ok':'notok'}">${p.twopager_ok?'OK':'—'}</span>${p.twopager_date?`<div class="sub2">${fmtD(p.twopager_date)}</div>`:''}</td>
+      <td style="font-weight:600">${dpComm(p)>0?fmt(dpComm(p)):'<span class="dim">—</span>'}</td>
+      <td style="font-weight:600">${balComm(p)>0?fmt(balComm(p)):'<span class="dim">—</span>'}</td>
+      <td><button class="btn btn-secondary btn-sm" onclick="openModal('${p.id}')">Edit</button></td>
+    </tr>`;
+  }
+  html+='</tbody></table>';
+  document.getElementById('all-table').innerHTML=html;
+}
+
+// ── Render: Pending ────────────────────────────────────────────────────────────
+function renderPending(){
+  const list=projects.filter(p=>{
+    const hasPay=p.dp_date||p.bal_date;
+    const allMet=p.fm_ok&&p.twopager_ok&&p.fm_date&&p.twopager_date;
+    return hasPay&&!allMet;
+  });
+
+  if(!list.length){
+    document.getElementById('pending-table').innerHTML='<div class="empty" style="color:#10B981">✓ &nbsp;Nothing pending — all paid projects have complete approvals.</div>';
+    return;
+  }
+
+  let html=`<table><thead><tr>
+    <th>Project</th><th>Sales person</th><th>Last payment</th><th>What's missing</th><th>DP comm at stake</th><th>Bal comm at stake</th><th>Approvals</th>
+  </tr></thead><tbody>`;
+  for(const p of list){
+    const needsFM=!p.fm_ok||!p.fm_date;
+    const needs2P=!p.twopager_ok||!p.twopager_date;
+    const missing=[];
+    if(needsFM)missing.push('FM not approved');
+    if(needs2P)missing.push('2-pager not approved');
+    const lastPay=maxDate(p.dp_date,p.bal_date);
+    const approveBtns=[
+      needsFM?`<button class="btn btn-primary btn-sm" onclick="approveItem('${p.id}','fm')">✓ Approve FM</button>`:`<span class="badge ok" style="margin:1px">FM OK</span>`,
+      needs2P?`<button class="btn btn-primary btn-sm" onclick="approveItem('${p.id}','2p')">✓ Approve 2-pager</button>`:`<span class="badge ok" style="margin:1px">2P OK</span>`
+    ].join(' ');
+    html+=`<tr>
+      <td>${p.project}${p.notes?`<div class="sub2">${p.notes}</div>`:''}</td>
+      <td>${p.salesperson}</td>
+      <td>${fmtD(lastPay)}</td>
+      <td>${missing.map(m=>`<span class="badge bwarn" style="margin:1px">${m}</span>`).join('')||'<span class="badge ok">All met</span>'}</td>
+      <td>${p.dp_date&&dpComm(p)>0?fmt(dpComm(p)):'<span class="dim">—</span>'}</td>
+      <td>${p.bal_date&&balComm(p)>0?fmt(balComm(p)):'<span class="dim">—</span>'}</td>
+      <td style="white-space:nowrap">${approveBtns}</td>
+    </tr>`;
+  }
+  html+='</tbody></table>';
+  document.getElementById('pending-table').innerHTML=html;
+}
+
+// ── Tab navigation ─────────────────────────────────────────────────────────────
+function switchTab(btn){
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  const name=btn.dataset.tab;
+  document.getElementById('tab-'+name).classList.add('active');
+  if(name==='this-month')renderThisMonth();
+  if(name==='all-projects')renderAll();
+  if(name==='pending')renderPending();
+}
+
+function approveItem(id, type){
+  const p = projects.find(x=>x.id===id);
+  if(!p) return;
+  const today = new Date().toISOString().slice(0,10);
+  if(type==='fm'){p.fm_ok=true; p.fm_date=today;}
+  if(type==='2p'){p.twopager_ok=true; p.twopager_date=today;}
+  persist();
+  renderPending();
+  // also refresh This Month if it's visible
+  const active=document.querySelector('.tab-content.active');
+  if(active&&active.id==='tab-this-month') renderThisMonth();
+}
+
+function togglePersonFilter(sp){
+  selectedPerson = selectedPerson===sp ? null : sp;
+  renderThisMonth();
+}
+
+function resetWindow(){
+  activeWindowMonth=currentWindowMonth();
+  renderThisMonth();
+}
+
+// ── Modal ──────────────────────────────────────────────────────────────────────
+function openModal(id){
+  const ov=document.getElementById('modal-overlay');
+  const delBtn=document.getElementById('del-btn');
+  document.getElementById('pform').reset();
+  document.getElementById('f-dp-pct').value='40';
+  document.getElementById('f-fm-date').disabled=true;
+  document.getElementById('f-2p-date').disabled=true;
+
+  if(id){
+    const p=projects.find(x=>x.id===id);
+    if(!p)return;
+    document.getElementById('modal-title').textContent='Edit project';
+    document.getElementById('f-id').value=p.id;
+    document.getElementById('f-project').value=p.project;
+    document.getElementById('f-person').value=p.salesperson;
+    document.getElementById('f-margin').value=p.dev_margin;
+    document.getElementById('f-dp-pct').value=p.dp_pct;
+    document.getElementById('f-dp-date').value=p.dp_date||'';
+    document.getElementById('f-bal-date').value=p.bal_date||'';
+    document.getElementById('f-fm-ok').checked=p.fm_ok;
+    document.getElementById('f-fm-date').value=p.fm_date||'';
+    document.getElementById('f-fm-date').disabled=!p.fm_ok;
+    document.getElementById('f-2p-ok').checked=p.twopager_ok;
+    document.getElementById('f-2p-date').value=p.twopager_date||'';
+    document.getElementById('f-2p-date').disabled=!p.twopager_ok;
+    document.getElementById('f-notes').value=p.notes||'';
+    delBtn.style.display='inline-block';
+    delBtn.setAttribute('data-del',id);
+  }else{
+    document.getElementById('modal-title').textContent='Add project';
+    document.getElementById('f-id').value='';
+    delBtn.style.display='none';
+  }
+  previewComm();
+  ov.classList.add('open');
+}
+
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open');}
+function bgClose(e){if(e.target===document.getElementById('modal-overlay'))closeModal();}
+
+function toggleApv(type){
+  const ok=document.getElementById(`f-${type}-ok`).checked;
+  const dateEl=document.getElementById(`f-${type}-date`);
+  dateEl.disabled=!ok;
+  if(ok&&!dateEl.value)dateEl.value=new Date().toISOString().slice(0,10);
+  if(!ok)dateEl.value='';
+  previewComm();
+}
+
+function previewComm(){
+  const m=parseFloat(document.getElementById('f-margin').value)||0;
+  const dp=parseFloat(document.getElementById('f-dp-pct').value)||0;
+  document.getElementById('bal-preview').textContent=(100-dp).toFixed(0);
+  const dpc=m*(dp/100)*COMM_RATE;
+  const blc=m*(1-dp/100)*COMM_RATE;
+  document.getElementById('comm-preview').innerHTML=
+    `<b>Commission preview:</b> &nbsp;DP: <b style="color:#F5821F">${fmt(dpc)}</b> &nbsp;·&nbsp; Balance: <b style="color:#F5821F">${fmt(blc)}</b> &nbsp;·&nbsp; Total: <b style="color:#C4590A">${fmt(dpc+blc)}</b>`;
+}
+
+function saveProject(e){
+  e.preventDefault();
+  const id=document.getElementById('f-id').value||crypto.randomUUID();
+  const p={
+    id,
+    project:document.getElementById('f-project').value.trim(),
+    salesperson:document.getElementById('f-person').value,
+    dev_margin:parseFloat(document.getElementById('f-margin').value),
+    dp_pct:parseFloat(document.getElementById('f-dp-pct').value),
+    dp_date:document.getElementById('f-dp-date').value||null,
+    bal_date:document.getElementById('f-bal-date').value||null,
+    fm_ok:document.getElementById('f-fm-ok').checked,
+    fm_date:document.getElementById('f-fm-date').value||null,
+    twopager_ok:document.getElementById('f-2p-ok').checked,
+    twopager_date:document.getElementById('f-2p-date').value||null,
+    notes:document.getElementById('f-notes').value.trim()
+  };
+  const i=projects.findIndex(x=>x.id===id);
+  if(i>=0)projects[i]=p;else projects.push(p);
+  persist();
+  closeModal();
+  refresh();
+}
+
+function deleteProject(){
+  const id=document.getElementById('del-btn').getAttribute('data-del');
+  if(!id)return;
+  if(!confirm('Delete this project? This cannot be undone.'))return;
+  projects=projects.filter(p=>p.id!==id);
+  persist();
+  closeModal();
+  refresh();
+}
+
+function refresh(){
+  const active=document.querySelector('.tab-content.active');
+  if(!active)return;
+  const name=active.id.replace('tab-','');
+  if(name==='this-month')renderThisMonth();
+  if(name==='all-projects')renderAll();
+  if(name==='pending')renderPending();
+}
+
+// ── Export CSV ─────────────────────────────────────────────────────────────────
+function exportCSV(mode){
+  const {from,to}=windowDates(activeWindowMonth);
+  let rows,header;
+  if(mode==='window'){
+    header=['Project','Salesperson','Type','Trigger Date','Commission (S$)'];
+    rows=[];
+    for(const p of projects){
+      if(selectedPerson&&p.salesperson!==selectedPerson)continue;
+      const dt=dpTrigger(p),bt=balTrigger(p);
+      if(dt&&inWindow(dt,from,to))rows.push([p.project,p.salesperson,'DP',dt,dpComm(p).toFixed(2)]);
+      if(bt&&inWindow(bt,from,to))rows.push([p.project,p.salesperson,'Balance',bt,balComm(p).toFixed(2)]);
+    }
+    rows.sort((a,b)=>a[1].localeCompare(b[1]));
+    dlCSV([header,...rows],`commissions_${from}_to_${to}.csv`);
+  }else{
+    header=['Project','Salesperson','DP%','DP Date','Bal Date','Dev Margin','FM OK','FM Date','2-Pager OK','2-Pager Date','DP Comm (S$)','Bal Comm (S$)','Notes'];
+    rows=projects.map(p=>[p.project,p.salesperson,p.dp_pct+'%',p.dp_date||'',p.bal_date||'',p.dev_margin,p.fm_ok?'OK':'',p.fm_date||'',p.twopager_ok?'OK':'',p.twopager_date||'',dpComm(p).toFixed(2),balComm(p).toFixed(2),p.notes||'']);
+    dlCSV([header,...rows],'all_projects.csv');
+  }
+}
+function dlCSV(rows,name){
+  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download=name;a.click();
+}
+
+// ── Seed data ──────────────────────────────────────────────────────────────────
+function seedData(){
+  // fm_date = twopager_date = double_ok_date if present, else ≈ dp_date
+  // Covers: old completed, recent completed, edge cases (late 2pager), pending, no payment
+  return[
+    // Old completed (pre-2026)
+    {id:'s01',project:'26 Jalan Raya',salesperson:'Lew Jen Sern',dev_margin:1202,dp_pct:50,dp_date:'2025-06-24',bal_date:'2025-08-18',fm_ok:true,fm_date:'2025-06-24',twopager_ok:true,twopager_date:'2025-06-24',notes:''},
+    {id:'s02',project:'91 Pavilion Circle',salesperson:'Dionne Sim',dev_margin:1000,dp_pct:40,dp_date:'2024-12-09',bal_date:null,fm_ok:true,fm_date:'2025-01-01',twopager_ok:true,twopager_date:'2025-01-01',notes:'2pager approved Jan 1 — trigger moved to Jan 1'},
+    {id:'s03',project:'20 Almond Street',salesperson:'Pandora Chew',dev_margin:3004,dp_pct:40,dp_date:'2025-02-12',bal_date:'2025-03-10',fm_ok:true,fm_date:'2025-02-12',twopager_ok:true,twopager_date:'2025-02-12',notes:''},
+    // Early 2026 — both payments done
+    {id:'s04',project:'39B Everitt Road',salesperson:'Lew Jen Sern',dev_margin:1290,dp_pct:40,dp_date:'2026-01-13',bal_date:'2026-02-13',fm_ok:true,fm_date:'2026-01-13',twopager_ok:true,twopager_date:'2026-01-13',notes:''},
+    {id:'s05',project:'17 Tanglin Hill',salesperson:'Hans Lee',dev_margin:501,dp_pct:40,dp_date:'2026-01-15',bal_date:'2026-02-10',fm_ok:true,fm_date:'2026-01-15',twopager_ok:true,twopager_date:'2026-01-15',notes:''},
+    {id:'s06',project:'565 Sixth Avenue',salesperson:'Zeng Guowei',dev_margin:1455,dp_pct:40,dp_date:'2026-02-11',bal_date:'2026-03-11',fm_ok:true,fm_date:'2026-02-11',twopager_ok:true,twopager_date:'2026-02-11',notes:''},
+    {id:'s07',project:'33 Jalan Menarong',salesperson:'Ler Yee Yoong',dev_margin:2240,dp_pct:50,dp_date:'2026-03-13',bal_date:'2026-05-04',fm_ok:true,fm_date:'2026-03-13',twopager_ok:true,twopager_date:'2026-03-13',notes:''},
+    // Apr 17 – May 17 window (previous window, paid May 20)
+    {id:'s08',project:'11 Sirat Road',salesperson:'Hans Lee',dev_margin:1246,dp_pct:40,dp_date:'2026-04-24',bal_date:null,fm_ok:true,fm_date:'2026-04-24',twopager_ok:true,twopager_date:'2026-04-24',notes:''},
+    {id:'s09',project:"57 Jalan Ma'mor",salesperson:'Zeng Guowei',dev_margin:997,dp_pct:40,dp_date:'2026-04-07',bal_date:'2026-05-07',fm_ok:true,fm_date:'2026-04-07',twopager_ok:true,twopager_date:'2026-04-07',notes:'DP trigger Apr 7 (prev window); bal trigger May 7 (Apr–May window)'},
+    {id:'s10',project:'34 Leng Kong Empat',salesperson:'Ler Yee Yoong',dev_margin:1252,dp_pct:40,dp_date:'2026-04-09',bal_date:'2026-05-16',fm_ok:true,fm_date:'2026-04-09',twopager_ok:true,twopager_date:'2026-04-09',notes:'Bal trigger May 16 — in Apr–May window'},
+    {id:'s11',project:'61 Bedok Terrace',salesperson:'Zeng Guowei',dev_margin:1491,dp_pct:40,dp_date:'2026-04-20',bal_date:null,fm_ok:true,fm_date:'2026-04-20',twopager_ok:true,twopager_date:'2026-04-20',notes:''},
+    {id:'s12',project:'21 Lotus Ave',salesperson:'Hans Lee',dev_margin:1615,dp_pct:40,dp_date:'2026-04-23',bal_date:null,fm_ok:true,fm_date:'2026-04-23',twopager_ok:true,twopager_date:'2026-04-23',notes:''},
+    {id:'s13',project:'10 Jalan Arif',salesperson:'Zeng Guowei',dev_margin:1577,dp_pct:40,dp_date:'2026-04-29',bal_date:null,fm_ok:true,fm_date:'2026-04-29',twopager_ok:true,twopager_date:'2026-04-29',notes:''},
+    {id:'s14',project:'70 Jalan Kelichap',salesperson:'Hans Lee',dev_margin:661,dp_pct:40,dp_date:'2026-04-27',bal_date:null,fm_ok:true,fm_date:'2026-04-27',twopager_ok:true,twopager_date:'2026-04-27',notes:''},
+    {id:'s15',project:'13 Jalan Hiboran',salesperson:'Hans Lee',dev_margin:978,dp_pct:40,dp_date:'2026-04-08',bal_date:'2026-05-04',fm_ok:true,fm_date:'2026-04-08',twopager_ok:true,twopager_date:'2026-04-08',notes:'Bal trigger May 4 — in Apr–May window'},
+    // May 17 – Jun 17 window (current, pay Jun 20)
+    // KEY EDGE CASES: payment was earlier, but 2pager/FM approved after the 17th
+    {id:'s16',project:'127 Serangoon Garden Way',salesperson:'Zeng Guowei',dev_margin:384,dp_pct:40,dp_date:'2026-04-23',bal_date:null,fm_ok:true,fm_date:'2026-05-17',twopager_ok:true,twopager_date:'2026-05-17',notes:'Payment Apr 23 but approvals only done May 17 — trigger moves to May 17'},
+    {id:'s17',project:'37 Jalan Lanjut',salesperson:'Zeng Guowei',dev_margin:2143,dp_pct:40,dp_date:'2026-05-06',bal_date:null,fm_ok:true,fm_date:'2026-05-19',twopager_ok:true,twopager_date:'2026-05-19',notes:'2-pager approved May 19 — trigger May 19, falls in current window'},
+    {id:'s18',project:'19 Stratton Road',salesperson:'Lew Jen Sern',dev_margin:1546.06,dp_pct:40,dp_date:'2026-05-13',bal_date:null,fm_ok:true,fm_date:'2026-05-17',twopager_ok:true,twopager_date:'2026-05-17',notes:''},
+    {id:'s19',project:'26A Mimosa Road',salesperson:'Ler Yee Yoong',dev_margin:2935,dp_pct:40,dp_date:'2026-05-14',bal_date:null,fm_ok:true,fm_date:'2026-05-17',twopager_ok:true,twopager_date:'2026-05-17',notes:''},
+    {id:'s20',project:'64 Holland Grove View',salesperson:'Ler Yee Yoong',dev_margin:2443,dp_pct:40,dp_date:'2026-05-07',bal_date:null,fm_ok:true,fm_date:'2026-05-17',twopager_ok:true,twopager_date:'2026-05-17',notes:''},
+    {id:'s21',project:'17 Holland Grove View',salesperson:'Ler Yee Yoong',dev_margin:2026,dp_pct:40,dp_date:'2026-05-12',bal_date:null,fm_ok:true,fm_date:'2026-05-17',twopager_ok:true,twopager_date:'2026-05-17',notes:''},
+    {id:'s22',project:'25 Jalan Telang',salesperson:'Lew Jen Sern',dev_margin:1227.15,dp_pct:40,dp_date:'2026-05-08',bal_date:null,fm_ok:true,fm_date:'2026-05-08',twopager_ok:true,twopager_date:'2026-05-08',notes:'All criteria met May 8 — falls in Apr–May window'},
+    // Pending — payment made but criteria incomplete
+    {id:'s23',project:'2 Sunrise Drive',salesperson:'Lew Jen Sern',dev_margin:2930,dp_pct:20,dp_date:'2026-01-14',bal_date:null,fm_ok:false,fm_date:null,twopager_ok:false,twopager_date:null,notes:'FM Not OK — held since Jan'},
+    {id:'s24',project:'44 Hong San Walk',salesperson:'Lew Jen Sern',dev_margin:1433,dp_pct:10,dp_date:'2026-01-16',bal_date:null,fm_ok:false,fm_date:null,twopager_ok:false,twopager_date:null,notes:'FM Not OK'},
+    {id:'s25',project:'22 Woodgrove View',salesperson:'Hans Lee',dev_margin:1132,dp_pct:40,dp_date:'2025-07-26',bal_date:'2026-05-15',fm_ok:false,fm_date:null,twopager_ok:true,twopager_date:'2025-07-26',notes:'Balance paid but FM still not done — neither DP nor bal comm can be counted'},
+    {id:'s26',project:'66 Holland Grove View',salesperson:'Ler Yee Yoong',dev_margin:1728,dp_pct:40,dp_date:'2026-05-07',bal_date:null,fm_ok:false,fm_date:null,twopager_ok:false,twopager_date:null,notes:'FM and 2-pager both pending'},
+    {id:'s27',project:'51 Gentle Road',salesperson:'Zeng Guowei',dev_margin:4511,dp_pct:40,dp_date:'2026-04-27',bal_date:null,fm_ok:false,fm_date:null,twopager_ok:false,twopager_date:null,notes:'FM and 2-pager both pending — largest commission at stake'},
+    // No payment yet — FM/2pager done but waiting for customer
+    {id:'s28',project:'37 Bedok Terrace',salesperson:'Zeng Guowei',dev_margin:1264,dp_pct:40,dp_date:null,bal_date:null,fm_ok:true,fm_date:'2026-05-17',twopager_ok:true,twopager_date:'2026-05-17',notes:'Approvals done, no payment received yet'},
+    {id:'s29',project:'45 Leedon Park v2',salesperson:'Lew Jen Sern',dev_margin:2661.18,dp_pct:40,dp_date:null,bal_date:null,fm_ok:true,fm_date:'2026-05-17',twopager_ok:true,twopager_date:'2026-05-17',notes:'Awaiting downpayment'},
+    // 100% DP split (balance comm = 0) and 0% DP split edge cases
+    {id:'s30',project:'114 Eng Kong Road (50% supply)',salesperson:'Lew Jen Sern',dev_margin:802.78,dp_pct:100,dp_date:'2026-02-03',bal_date:null,fm_ok:true,fm_date:'2026-02-03',twopager_ok:true,twopager_date:'2026-02-03',notes:'100% DP split — no balance commission'},
+    {id:'s31',project:'27 Mariam Way',salesperson:'Hans Lee',dev_margin:1452,dp_pct:0,dp_date:'2026-04-29',bal_date:null,fm_ok:true,fm_date:'2026-04-29',twopager_ok:true,twopager_date:'2026-04-29',notes:'0% DP split — all commission on balance payment'},
+  ];
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+activeWindowMonth=currentWindowMonth();
+resetWindow();
+</script>
+</body>
+</html>
