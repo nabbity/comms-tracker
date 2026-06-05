@@ -83,6 +83,10 @@ tr:hover td{background:#fafafa}
 .comm-preview{background:#FFF8F3;border-radius:5px;padding:10px 12px;font-size:12px;margin-bottom:14px}
 .form-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;align-items:center}
 .empty{text-align:center;padding:48px;color:#9CA3AF}
+.payback{background:#FEE2E2;color:#991B1B;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700}
+.adj-pending{background:#FEF3C7;color:#92400E;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700}
+.adj-approved{background:#D1FAE5;color:#065F46;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700}
+.neg{color:#991B1B;font-weight:700}
 </style>
 </head>
 <body>
@@ -191,6 +195,24 @@ tr:hover td{background:#fafafa}
         </div>
       </div>
     </div>
+    <div class="apv-box">
+      <div class="apv-label">MARGIN ADJUSTMENT (if dev margin changed after project commenced)</div>
+      <div class="g2">
+        <div class="fr">
+          <label>ADJUSTED MARGIN (S$)</label>
+          <input type="number" id="f-adj-margin" step="0.01" min="0" placeholder="Leave blank if unchanged" oninput="previewComm()">
+        </div>
+        <div class="fr">
+          <label>STATUS</label>
+          <select id="f-adj-status">
+            <option value="">No adjustment</option>
+            <option value="pending">Pending approval</option>
+            <option value="approved">Approved</option>
+          </select>
+          <div class="hint">Salesperson submits → manager approves</div>
+        </div>
+      </div>
+    </div>
     <div class="fr"><label>NOTES</label><textarea id="f-notes" rows="2" style="resize:vertical"></textarea></div>
     <div class="comm-preview" id="comm-preview"></div>
     <div class="form-actions">
@@ -216,8 +238,21 @@ let projects = load();
 if(!projects.length){projects=seedData();persist();}
 
 // ── Commission logic ───────────────────────────────────────────────────────────
+// DP comm: always locked to original dev_margin (already paid)
 function dpComm(p){return p.dev_margin*(p.dp_pct/100)*COMM_RATE;}
-function balComm(p){return p.dev_margin*(1-p.dp_pct/100)*COMM_RATE;}
+
+// Effective margin for balance: use adjusted if approved, else original
+function effectiveMargin(p){
+  return (p.adj_status==='approved'&&p.adjusted_margin!=null)?p.adjusted_margin:p.dev_margin;
+}
+
+// Balance comm = (adjusted total comm) − (DP comm already paid)
+// Can be negative if margin dropped below DP already paid → payback required
+function balComm(p){
+  return effectiveMargin(p)*COMM_RATE - dpComm(p);
+}
+
+function needsPayback(p){return balComm(p)<0;}
 
 function maxDate(...ds){
   const v=ds.filter(Boolean);
@@ -386,8 +421,8 @@ function renderAll(){
       <td>${fmtD(p.bal_date)}${bt?`<div class="sub2">Trigger: ${fmtD(bt)}</div>`:''}</td>
       <td><span class="badge ${p.fm_ok?'ok':'notok'}">${p.fm_ok?'OK':'—'}</span>${p.fm_date?`<div class="sub2">${fmtD(p.fm_date)}</div>`:''}</td>
       <td><span class="badge ${p.twopager_ok?'ok':'notok'}">${p.twopager_ok?'OK':'—'}</span>${p.twopager_date?`<div class="sub2">${fmtD(p.twopager_date)}</div>`:''}</td>
-      <td style="font-weight:600">${dpComm(p)>0?fmt(dpComm(p)):'<span class="dim">—</span>'}</td>
-      <td style="font-weight:600">${balComm(p)>0?fmt(balComm(p)):'<span class="dim">—</span>'}</td>
+      <td style="font-weight:600">${dpComm(p)>0?fmt(dpComm(p)):'<span class="dim">—</span>'}${p.adj_status==='approved'&&p.adjusted_margin!=null?`<div class="sub2">Adj: ${fmt(p.adjusted_margin)}</div>`:p.adj_status==='pending'&&p.adjusted_margin!=null?`<div class="sub2"><span class="adj-pending">Adj pending: ${fmt(p.adjusted_margin)}</span></div>`:''}</td>
+      <td style="font-weight:600" class="${needsPayback(p)?'neg':''}">${needsPayback(p)?`−${fmt(Math.abs(balComm(p)))} <span class="payback">Payback</span>`:balComm(p)>0?fmt(balComm(p)):'<span class="dim">—</span>'}</td>
       <td><button class="btn btn-secondary btn-sm" onclick="openModal('${p.id}')">Edit</button></td>
     </tr>`;
   }
@@ -396,44 +431,88 @@ function renderAll(){
 }
 
 // ── Render: Pending ────────────────────────────────────────────────────────────
+function approveAdjustment(id){
+  const p=projects.find(x=>x.id===id);
+  if(!p)return;
+  p.adj_status='approved';
+  persist();
+  renderPending();
+  const active=document.querySelector('.tab-content.active');
+  if(active&&active.id==='tab-this-month')renderThisMonth();
+}
+
 function renderPending(){
+  // Section 1: missing FM/2-pager approvals
   const list=projects.filter(p=>{
     const hasPay=p.dp_date||p.bal_date;
     const allMet=p.fm_ok&&p.twopager_ok&&p.fm_date&&p.twopager_date;
     return hasPay&&!allMet;
   });
 
-  if(!list.length){
-    document.getElementById('pending-table').innerHTML='<div class="empty" style="color:#10B981">✓ &nbsp;Nothing pending — all paid projects have complete approvals.</div>';
-    return;
+  // Section 2: pending margin adjustments
+  const adjList=projects.filter(p=>p.adj_status==='pending'&&p.adjusted_margin!=null);
+
+  let out='';
+
+  // ── Section 1: FM / 2-pager approvals outstanding ──
+  if(list.length){
+    let html=`<div class="sec-title" style="margin-bottom:8px">Awaiting approvals</div>
+    <div class="tbl-wrap" style="margin-bottom:24px"><table><thead><tr>
+      <th>Project</th><th>Sales person</th><th>Last payment</th><th>What's missing</th><th>DP comm at stake</th><th>Bal comm at stake</th><th>Approvals</th>
+    </tr></thead><tbody>`;
+    for(const p of list){
+      const needsFM=!p.fm_ok||!p.fm_date;
+      const needs2P=!p.twopager_ok||!p.twopager_date;
+      const missing=[];
+      if(needsFM)missing.push('FM not approved');
+      if(needs2P)missing.push('2-pager not approved');
+      const lastPay=maxDate(p.dp_date,p.bal_date);
+      const approveBtns=[
+        needsFM?`<button class="btn btn-primary btn-sm" onclick="approveItem('${p.id}','fm')">✓ Approve FM</button>`:`<span class="badge ok" style="margin:1px">FM OK</span>`,
+        needs2P?`<button class="btn btn-primary btn-sm" onclick="approveItem('${p.id}','2p')">✓ Approve 2-pager</button>`:`<span class="badge ok" style="margin:1px">2P OK</span>`
+      ].join(' ');
+      html+=`<tr>
+        <td>${p.project}${p.notes?`<div class="sub2">${p.notes}</div>`:''}</td>
+        <td>${p.salesperson}</td>
+        <td>${fmtD(lastPay)}</td>
+        <td>${missing.map(m=>`<span class="badge bwarn" style="margin:1px">${m}</span>`).join('')}</td>
+        <td>${p.dp_date&&dpComm(p)>0?fmt(dpComm(p)):'<span class="dim">—</span>'}</td>
+        <td>${p.bal_date&&balComm(p)>0?fmt(balComm(p)):'<span class="dim">—</span>'}</td>
+        <td style="white-space:nowrap">${approveBtns}</td>
+      </tr>`;
+    }
+    html+='</tbody></table></div>';
+    out+=html;
   }
 
-  let html=`<table><thead><tr>
-    <th>Project</th><th>Sales person</th><th>Last payment</th><th>What's missing</th><th>DP comm at stake</th><th>Bal comm at stake</th><th>Approvals</th>
-  </tr></thead><tbody>`;
-  for(const p of list){
-    const needsFM=!p.fm_ok||!p.fm_date;
-    const needs2P=!p.twopager_ok||!p.twopager_date;
-    const missing=[];
-    if(needsFM)missing.push('FM not approved');
-    if(needs2P)missing.push('2-pager not approved');
-    const lastPay=maxDate(p.dp_date,p.bal_date);
-    const approveBtns=[
-      needsFM?`<button class="btn btn-primary btn-sm" onclick="approveItem('${p.id}','fm')">✓ Approve FM</button>`:`<span class="badge ok" style="margin:1px">FM OK</span>`,
-      needs2P?`<button class="btn btn-primary btn-sm" onclick="approveItem('${p.id}','2p')">✓ Approve 2-pager</button>`:`<span class="badge ok" style="margin:1px">2P OK</span>`
-    ].join(' ');
-    html+=`<tr>
-      <td>${p.project}${p.notes?`<div class="sub2">${p.notes}</div>`:''}</td>
-      <td>${p.salesperson}</td>
-      <td>${fmtD(lastPay)}</td>
-      <td>${missing.map(m=>`<span class="badge bwarn" style="margin:1px">${m}</span>`).join('')||'<span class="badge ok">All met</span>'}</td>
-      <td>${p.dp_date&&dpComm(p)>0?fmt(dpComm(p)):'<span class="dim">—</span>'}</td>
-      <td>${p.bal_date&&balComm(p)>0?fmt(balComm(p)):'<span class="dim">—</span>'}</td>
-      <td style="white-space:nowrap">${approveBtns}</td>
-    </tr>`;
+  // ── Section 2: Margin adjustments pending approval ──
+  if(adjList.length){
+    let html=`<div class="sec-title" style="margin-bottom:8px">Margin adjustments pending approval</div>
+    <div class="tbl-wrap" style="margin-bottom:24px"><table><thead><tr>
+      <th>Project</th><th>Sales person</th><th>Original margin</th><th>Adjusted margin</th><th>DP comm (paid)</th><th>New balance comm</th><th></th>
+    </tr></thead><tbody>`;
+    for(const p of adjList){
+      const newBal=p.adjusted_margin*COMM_RATE - dpComm(p);
+      const payback=newBal<0;
+      html+=`<tr>
+        <td>${p.project}</td>
+        <td>${p.salesperson}</td>
+        <td>${fmt(p.dev_margin)}</td>
+        <td>${fmt(p.adjusted_margin)} <span class="adj-pending">Pending</span></td>
+        <td>${fmt(dpComm(p))}</td>
+        <td class="${payback?'neg':''}">${payback?`−${fmt(Math.abs(newBal))} <span class="payback">Payback required</span>`:fmt(newBal)}</td>
+        <td><button class="btn btn-primary btn-sm" onclick="approveAdjustment('${p.id}')">✓ Approve adjustment</button></td>
+      </tr>`;
+    }
+    html+='</tbody></table></div>';
+    out+=html;
   }
-  html+='</tbody></table>';
-  document.getElementById('pending-table').innerHTML=html;
+
+  if(!out){
+    out='<div class="empty" style="color:#10B981">✓ &nbsp;Nothing pending — all approvals complete.</div>';
+  }
+
+  document.getElementById('pending-table').innerHTML=out;
 }
 
 // ── Tab navigation ─────────────────────────────────────────────────────────────
@@ -498,11 +577,15 @@ function openModal(id){
     document.getElementById('f-2p-date').value=p.twopager_date||'';
     document.getElementById('f-2p-date').disabled=!p.twopager_ok;
     document.getElementById('f-notes').value=p.notes||'';
+    document.getElementById('f-adj-margin').value=p.adjusted_margin!=null?p.adjusted_margin:'';
+    document.getElementById('f-adj-status').value=p.adj_status||'';
     delBtn.style.display='inline-block';
     delBtn.setAttribute('data-del',id);
   }else{
     document.getElementById('modal-title').textContent='Add project';
     document.getElementById('f-id').value='';
+    document.getElementById('f-adj-margin').value='';
+    document.getElementById('f-adj-status').value='';
     delBtn.style.display='none';
   }
   previewComm();
@@ -524,11 +607,20 @@ function toggleApv(type){
 function previewComm(){
   const m=parseFloat(document.getElementById('f-margin').value)||0;
   const dp=parseFloat(document.getElementById('f-dp-pct').value)||0;
+  const adjRaw=document.getElementById('f-adj-margin').value;
+  const adjStatus=document.getElementById('f-adj-status').value;
+  const adjM=adjRaw!==''?parseFloat(adjRaw):null;
   document.getElementById('bal-preview').textContent=(100-dp).toFixed(0);
   const dpc=m*(dp/100)*COMM_RATE;
-  const blc=m*(1-dp/100)*COMM_RATE;
+  const effM=(adjStatus==='approved'&&adjM!=null)?adjM:m;
+  const blc=effM*COMM_RATE-dpc;
+  const payback=blc<0;
+  let balStr=payback
+    ?`<b class="neg">−${fmt(Math.abs(blc))} ⚠ payback required</b>`
+    :`<b style="color:#F5821F">${fmt(blc)}</b>`;
+  const total=dpc+blc;
   document.getElementById('comm-preview').innerHTML=
-    `<b>Commission preview:</b> &nbsp;DP: <b style="color:#F5821F">${fmt(dpc)}</b> &nbsp;·&nbsp; Balance: <b style="color:#F5821F">${fmt(blc)}</b> &nbsp;·&nbsp; Total: <b style="color:#C4590A">${fmt(dpc+blc)}</b>`;
+    `<b>Commission preview:</b> &nbsp;DP: <b style="color:#F5821F">${fmt(dpc)}</b> &nbsp;·&nbsp; Balance: ${balStr} &nbsp;·&nbsp; Total: <b style="color:#C4590A">${payback?fmt(total):fmt(total)}</b>`;
 }
 
 function saveProject(e){
@@ -546,7 +638,9 @@ function saveProject(e){
     fm_date:document.getElementById('f-fm-date').value||null,
     twopager_ok:document.getElementById('f-2p-ok').checked,
     twopager_date:document.getElementById('f-2p-date').value||null,
-    notes:document.getElementById('f-notes').value.trim()
+    notes:document.getElementById('f-notes').value.trim(),
+    adjusted_margin:document.getElementById('f-adj-margin').value!==''?parseFloat(document.getElementById('f-adj-margin').value):null,
+    adj_status:document.getElementById('f-adj-status').value||null
   };
   const i=projects.findIndex(x=>x.id===id);
   if(i>=0)projects[i]=p;else projects.push(p);
