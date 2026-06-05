@@ -131,10 +131,7 @@ tr:hover td{background:#fafafa}
         <option value="nopay">No payment yet</option>
       </select>
     </div>
-    <div style="display:flex;gap:8px">
-      <button class="export-btn" onclick="exportCSV('all')">Export CSV</button>
-      <button class="btn btn-primary btn-sm" onclick="openModal(null)">+ Add project</button>
-    </div>
+    <button class="export-btn" onclick="exportCSV('all')">Export CSV</button>
   </div>
   <div class="tbl-wrap" id="all-table"></div>
 </div>
@@ -342,7 +339,7 @@ function renderThisMonth(){
   visibleRows.sort((a,b)=>a.p.salesperson.localeCompare(b.p.salesperson)||a.trigger.localeCompare(b.trigger));
 
   let html=`<table><thead><tr>
-    <th>Project</th><th>Sales person</th><th>Type</th><th>Trigger date</th><th>Dev margin</th><th style="text-align:right">Commission</th><th></th>
+    <th>Project</th><th>Sales person</th><th>Type</th><th>Trigger date</th><th>Dev margin</th><th style="text-align:right">Commission</th>
   </tr></thead><tbody>`;
   for(const r of visibleRows){
     const payLine=r.type==='DP'?`DP: ${fmtD(r.p.dp_date)}`:`Bal: ${fmtD(r.p.bal_date)}`;
@@ -353,7 +350,6 @@ function renderThisMonth(){
       <td>${fmtD(r.trigger)}<div class="sub2">${payLine} · FM: ${fmtD(r.p.fm_date)} · 2P: ${fmtD(r.p.twopager_date)}</div></td>
       <td>${fmt(r.p.dev_margin)}</td>
       <td style="text-align:right;font-weight:700">${fmt(r.amount)}</td>
-      <td><button class="btn btn-secondary btn-sm" onclick="openModal('${r.p.id}')">Edit</button></td>
     </tr>`;
   }
   html+='</tbody></table>';
@@ -374,7 +370,7 @@ function renderAll(){
   if(!list.length){document.getElementById('all-table').innerHTML='<div class="empty">No projects match this filter.</div>';return;}
 
   let html=`<table><thead><tr>
-    <th>Project</th><th>Sales person</th><th>DP%</th><th>DP date / trigger</th><th>Bal date / trigger</th><th>FM</th><th>2-pager</th><th>DP comm</th><th>Bal comm</th><th></th>
+    <th>Project</th><th>Sales person</th><th>DP%</th><th>DP date / trigger</th><th>Bal date / trigger</th><th>FM</th><th>2-pager</th><th>DP comm</th><th>Bal comm</th>
   </tr></thead><tbody>`;
   for(const p of list){
     const dt=dpTrigger(p),bt=balTrigger(p);
@@ -388,7 +384,6 @@ function renderAll(){
       <td><span class="badge ${p.twopager_ok?'ok':'notok'}">${p.twopager_ok?'OK':'—'}</span>${p.twopager_date?`<div class="sub2">${fmtD(p.twopager_date)}</div>`:''}</td>
       <td style="font-weight:600">${dpComm(p)>0?fmt(dpComm(p)):'<span class="dim">—</span>'}</td>
       <td style="font-weight:600">${balComm(p)>0?fmt(balComm(p)):'<span class="dim">—</span>'}</td>
-      <td><button class="btn btn-secondary btn-sm" onclick="openModal('${p.id}')">Edit</button></td>
     </tr>`;
   }
   html+='</tbody></table>';
