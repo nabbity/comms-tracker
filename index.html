@@ -359,12 +359,14 @@ function renderThisMonth(){
   let grand=0;
   for(const r of rows){totals[r.p.salesperson]=(totals[r.p.salesperson]||0)+r.amount;grand+=r.amount;}
 
-  let cards=`<div class="card grand"><div class="name">TOTAL PAYOUT</div><div class="amount">${fmt(grand)}</div><div class="sub">${rows.length} commission(s)</div></div>`;
+  const paybackCount=rows.filter(r=>r.amount<0).length;
+  let cards=`<div class="card grand"><div class="name">TOTAL PAYOUT</div><div class="amount">${fmt(grand)}</div><div class="sub">${rows.length} commission(s)${paybackCount>0?` · <span class="payback">${paybackCount} payback</span>`:''}</div></div>`;
   for(const sp of SALESPEOPLE){
     const a=totals[sp]||0;
     const c=rows.filter(r=>r.p.salesperson===sp).length;
+    const hasPayback=rows.some(r=>r.p.salesperson===sp&&r.amount<0);
     const sel=selectedPerson===sp?'selected':'';
-    cards+=`<div class="card person ${sel}" onclick="togglePersonFilter('${sp}')"><div class="name">${sp}</div><div class="amount">${a>0?fmt(a):'<span style="color:#ccc;font-size:16px">—</span>'}</div><div class="sub">${c>0?c+' item(s)':'nothing this window'}</div></div>`;
+    cards+=`<div class="card person ${sel}" onclick="togglePersonFilter('${sp}')"><div class="name">${sp}</div><div class="amount ${hasPayback?'neg':''}">${a!==0?( a<0?`−${fmt(Math.abs(a))}`:fmt(a)):'<span style="color:#ccc;font-size:16px">—</span>'}</div><div class="sub">${c>0?c+' item(s)'+(hasPayback?' · <span class="payback">payback</span>':''):'nothing this window'}</div></div>`;
   }
   document.getElementById('summary-grid').innerHTML=cards;
 
@@ -387,7 +389,7 @@ function renderThisMonth(){
       <td><span class="badge ${r.type==='DP'?'bdp':'bbal'}">${r.type}</span></td>
       <td>${fmtD(r.trigger)}<div class="sub2">${payLine} · FM: ${fmtD(r.p.fm_date)} · 2P: ${fmtD(r.p.twopager_date)}</div></td>
       <td>${fmt(r.p.dev_margin)}</td>
-      <td style="text-align:right;font-weight:700">${fmt(r.amount)}</td>
+      <td style="text-align:right;font-weight:700" class="${r.amount<0?'neg':''}">${r.amount<0?`−${fmt(Math.abs(r.amount))} <span class="payback">Payback</span>`:fmt(r.amount)}</td>
       <td><button class="btn btn-secondary btn-sm" onclick="openModal('${r.p.id}')">Edit</button></td>
     </tr>`;
   }
